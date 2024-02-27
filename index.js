@@ -58,22 +58,23 @@ app.get("/api/questions", async (req, res) => {
 //pull context table against the answers
 
 app.get("/api/context/:contextId", async (req, res) => {
-    const { contextId } = req.params;
+  const { contextId } = req.params;
 
-    const query = `
-        SELECT c.DOC_ID, GROUP_CONCAT(c.PARAG_ID SEPARATOR ', ') AS PARAG_IDS
-        FROM context c
-        WHERE c.CONTEXT_ID = ?
-        GROUP BY c.DOC_ID;
-    `;
+  // Updated query to fetch individual paragraph IDs
+  const query = `
+      SELECT c.DOC_ID, c.PARAG_ID
+      FROM context c
+      WHERE c.CONTEXT_ID = ?
+      ORDER BY c.DOC_ID, c.PARAG_ID;
+  `;
 
-    try {
-        const [results] = await db.promise().query(query, [contextId]);
-        res.status(200).json(results);
-    } catch (error) {
-        console.error("Error fetching Context:", error);
-        res.status(500).json({ message: "Error fetching Context" });
-    }
+  try {
+      const [results] = await db.promise().query(query, [contextId]);
+      res.status(200).json(results);
+  } catch (error) {
+      console.error("Error fetching Context:", error);
+      res.status(500).json({ message: "Error fetching Context" });
+  }
 });
 
 //Get documents
