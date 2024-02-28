@@ -60,10 +60,11 @@ app.get("/api/questions", async (req, res) => {
 app.get("/api/context/:contextId", async (req, res) => {
   const { contextId } = req.params;
 
-  // Updated query to fetch individual paragraph IDs
+  // Updated query to also fetch paragraph texts
   const query = `
-      SELECT c.DOC_ID, c.PARAG_ID
+      SELECT c.DOC_ID, c.PARAG_ID, dp.PARAG_TEXT
       FROM context c
+      LEFT JOIN doc_parag dp ON c.PARAG_ID = dp.PARAG_ID
       WHERE c.CONTEXT_ID = ?
       ORDER BY c.DOC_ID, c.PARAG_ID;
   `;
@@ -106,6 +107,8 @@ app.get('/getParagraphs', (req, res) => {
     res.json(results); // Send query results back to the client
   });
 });
+
+
 // set port, listen for requests
 const PORT = 2000;
 app.listen(PORT, () => {
