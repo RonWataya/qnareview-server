@@ -34,9 +34,9 @@ app.get("/api/questions", async (req, res) => {
 
     // Adjusted query to reflect new schema
     const query = `
-    SELECT q.Q_TEXT as question, a.ANSWER_TEXT as answer, a.CONTEXT_ID as contextId
+    SELECT q.Q_ID as questionId, q.Q_TEXT as question, a.ANSWER_ID as answerId, a.ANSWER_TEXT as answer, a.CONTEXT_ID as contextId
     FROM questions q
-    JOIN qa qa ON q.Q_ID = qa.Q_ID
+    JOIN qa ON q.Q_ID = qa.Q_ID
     JOIN answers a ON a.ANSWER_ID = qa.ANSWER_ID
     WHERE q.Q_TEXT LIKE ?
     LIMIT 100;
@@ -107,6 +107,121 @@ app.get('/getParagraphs', (req, res) => {
     res.json(results); // Send query results back to the client
   });
 });
+
+//Save new answer to an existing question
+app.post('/save-answer', (req, res) => {
+  const { answerText, questionId, contextId } = req.body;
+
+  // First, determine the next available number for ANSWER_ID
+  const idQuery = "SELECT ANSWER_ID FROM answers WHERE ANSWER_ID REGEXP '^A_[0-9]+_1$' ORDER BY LENGTH(ANSWER_ID) DESC, ANSWER_ID DESC LIMIT 1";
+
+  db.query(idQuery, async (error, results) => {
+      if (error) {
+          console.error('Failed to query existing ANSWER_IDs:', error);
+          res.json({ success: false, message: 'Failed to generate a unique ANSWER_ID.' });
+          return;
+      }
+
+      let nextNumber;
+      if (results.length > 0) {
+          const lastId = results[0].ANSWER_ID;
+          const lastNumber = parseInt(lastId.split('_')[1]);
+          nextNumber = lastNumber + 1;
+      } else {
+          nextNumber = 1; // Start from 1 if no existing IDs
+      }
+
+      const newAnswerId = `A_${nextNumber}_1`;
+
+      // Insert the new answer with the generated ANSWER_ID
+      const insertQuery = 'INSERT INTO answers (ANSWER_ID, ANSWER_TEXT, CONTEXT_ID) VALUES (?, ?, ?)';
+
+      db.query(insertQuery, [newAnswerId, answerText, contextId], (insertError, insertResults) => {
+          if (insertError) {
+              console.error('Failed to insert new answer:', insertError);
+              res.json({ success: false, message: 'Failed to save the new answer with a unique ID.' });
+              return;
+          }
+          
+          // After successfully inserting the answer, insert/update the qa table
+          const qaInsertQuery = 'INSERT INTO qa (Q_ID, ANSWER_ID) VALUES (?, ?)';
+
+          db.query(qaInsertQuery, [questionId, newAnswerId], (qaError, qaResults) => {
+              if (qaError) {
+                  console.error('Failed to update qa table:', qaError);
+                  res.json({ success: false, message: 'Failed to update the qa table.' });
+                  return;
+              }
+              res.json({ success: true, message: 'New answer saved successfully, and qa table updated.', answerId: newAnswerId });
+          });
+      });
+  });
+});
+
+//create a new question and answer
+app.post('/create-question-answer', async (req, res) => {
+  const { questionText, answerText, docId, paragId } = req.body;
+
+  let nextNumber; // Declare nextNumber here to make it accessible throughout the function
+
+  // Step 1: Insert the new question
+  const questionQuery = 'INSERT INTO questions (Q_TEXT) VALUES (?)';
+  let questionId;
+  try {
+    const [questionResult] = await db.promise().query(questionQuery, [questionText]);
+    questionId = questionResult.insertId;
+  } catch (error) {
+    console.error('Failed to insert new question:', error);
+    return res.json({ success: false, message: 'Failed to insert new question.' });
+  }
+
+  // Step 2: Determine the next CONTEXT_ID
+  const contextQuery = "SELECT CONTEXT_ID FROM context WHERE CONTEXT_ID REGEXP '^C_A_[0-9]+_1$' ORDER BY LENGTH(CONTEXT_ID) DESC, CONTEXT_ID DESC LIMIT 1";
+  let contextId;
+  try {
+    const [contextResults] = await db.promise().query(contextQuery);
+    nextNumber = 1; // Initialize nextNumber here without let, as it's already declared
+    if (contextResults.length > 0) {
+      const lastId = contextResults[0].CONTEXT_ID;
+      const lastNumber = parseInt(lastId.split('_')[2]);
+      nextNumber = lastNumber + 1;
+    }
+    contextId = `C_A_${nextNumber}_1`;
+  } catch (error) {
+    console.error('Failed to determine next CONTEXT_ID:', error);
+    return res.json({ success: false, message: 'Failed to generate context ID.' });
+  }
+
+  // Step 3: Insert the new context
+  const insertContextQuery = 'INSERT INTO context (CONTEXT_ID, DOC_ID, PARAG_ID) VALUES (?, ?, ?)';
+  try {
+    await db.promise().query(insertContextQuery, [contextId, docId, paragId]);
+  } catch (error) {
+    console.error('Failed to insert new context:', error);
+    return res.json({ success: false, message: 'Failed to insert new context.' });
+  }
+
+  // Step 4: Insert the new answer with the CONTEXT_ID
+  const newAnswerId = `A_${nextNumber}_1`; // Correctly using nextNumber
+  const insertAnswerQuery = 'INSERT INTO answers (ANSWER_ID, ANSWER_TEXT, CONTEXT_ID) VALUES (?, ?, ?)';
+  try {
+    await db.promise().query(insertAnswerQuery, [newAnswerId, answerText, contextId]);
+  } catch (error) {
+    console.error('Failed to insert new answer:', error);
+    return res.json({ success: false, message: 'Failed to insert new answer.' });
+  }
+
+  // Step 5: Link the question and answer in the qa table
+  const insertQAQuery = 'INSERT INTO qa (Q_ID, ANSWER_ID) VALUES (?, ?)';
+  try {
+    await db.promise().query(insertQAQuery, [questionId, newAnswerId]);
+    res.json({ success: true, message: 'New question and answer saved successfully.', questionId, answerId: newAnswerId });
+  } catch (error) {
+    console.error('Failed to link question and answer:', error);
+    return res.json({ success: false, message: 'Failed to link question and answer.' });
+  }
+});
+
 
 
 // set port, listen for requests
