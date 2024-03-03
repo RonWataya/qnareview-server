@@ -161,67 +161,49 @@ app.post('/save-answer', (req, res) => {
 //create a new question and answer
 app.post('/create-question-answer', async (req, res) => {
   const { questionText, answerText, docId, paragId } = req.body;
+  console.log('Received data:', { questionText, answerText, docId, paragId }); // Debugging line
 
-  let nextNumber; // Declare nextNumber here to make it accessible throughout the function
-
-  // Step 1: Insert the new question
-  const questionQuery = 'INSERT INTO questions (Q_TEXT) VALUES (?)';
-  let questionId;
   try {
+    // Step 1: Insert the new question
+    const questionQuery = 'INSERT INTO questions (Q_TEXT) VALUES (?)';
     const [questionResult] = await db.promise().query(questionQuery, [questionText]);
-    questionId = questionResult.insertId;
-  } catch (error) {
-    console.error('Failed to insert new question:', error);
-    return res.json({ success: false, message: 'Failed to insert new question.' });
-  }
+    const questionId = questionResult.insertId;
+    console.log('Question inserted with ID:', questionId); // Debugging line
 
-  // Step 2: Determine the next CONTEXT_ID
-  const contextQuery = "SELECT CONTEXT_ID FROM context WHERE CONTEXT_ID REGEXP '^C_A_[0-9]+_1$' ORDER BY LENGTH(CONTEXT_ID) DESC, CONTEXT_ID DESC LIMIT 1";
-  let contextId;
-  try {
+    // Step 2: Determine the next CONTEXT_ID
+    const contextQuery = "SELECT CONTEXT_ID FROM context WHERE CONTEXT_ID REGEXP '^C_A_[0-9]+_1$' ORDER BY LENGTH(CONTEXT_ID) DESC, CONTEXT_ID DESC LIMIT 1";
     const [contextResults] = await db.promise().query(contextQuery);
-    nextNumber = 1; // Initialize nextNumber here without let, as it's already declared
+    let nextNumber = 1;
     if (contextResults.length > 0) {
       const lastId = contextResults[0].CONTEXT_ID;
       const lastNumber = parseInt(lastId.split('_')[2]);
       nextNumber = lastNumber + 1;
     }
-    contextId = `C_A_${nextNumber}_1`;
-  } catch (error) {
-    console.error('Failed to determine next CONTEXT_ID:', error);
-    return res.json({ success: false, message: 'Failed to generate context ID.' });
-  }
+    const contextId = `C_A_${nextNumber}_1`;
+    console.log('Generated CONTEXT_ID:', contextId); // Debugging line
 
-  // Step 3: Insert the new context
-  const insertContextQuery = 'INSERT INTO context (CONTEXT_ID, DOC_ID, PARAG_ID) VALUES (?, ?, ?)';
-  try {
+    // Step 3: Insert the new context
+    const insertContextQuery = 'INSERT INTO context (CONTEXT_ID, DOC_ID, PARAG_ID) VALUES (?, ?, ?)';
     await db.promise().query(insertContextQuery, [contextId, docId, paragId]);
-  } catch (error) {
-    console.error('Failed to insert new context:', error);
-    return res.json({ success: false, message: 'Failed to insert new context.' });
-  }
+    console.log('Context inserted:', {contextId, docId, paragId}); // Debugging line
 
-  // Step 4: Insert the new answer with the CONTEXT_ID
-  const newAnswerId = `A_${nextNumber}_1`; // Correctly using nextNumber
-  const insertAnswerQuery = 'INSERT INTO answers (ANSWER_ID, ANSWER_TEXT, CONTEXT_ID) VALUES (?, ?, ?)';
-  try {
+    // Step 4: Insert the new answer with the CONTEXT_ID
+    const newAnswerId = `A_${nextNumber}_1`; // Correctly using nextNumber
+    const insertAnswerQuery = 'INSERT INTO answers (ANSWER_ID, ANSWER_TEXT, CONTEXT_ID) VALUES (?, ?, ?)';
     await db.promise().query(insertAnswerQuery, [newAnswerId, answerText, contextId]);
-  } catch (error) {
-    console.error('Failed to insert new answer:', error);
-    return res.json({ success: false, message: 'Failed to insert new answer.' });
-  }
+    console.log('Answer inserted with ID:', newAnswerId); // Debugging line
 
-  // Step 5: Link the question and answer in the qa table
-  const insertQAQuery = 'INSERT INTO qa (Q_ID, ANSWER_ID) VALUES (?, ?)';
-  try {
+    // Step 5: Link the question and answer in the qa table
+    const insertQAQuery = 'INSERT INTO qa (Q_ID, ANSWER_ID) VALUES (?, ?)';
     await db.promise().query(insertQAQuery, [questionId, newAnswerId]);
+    console.log('Linked question and answer:', { questionId, newAnswerId }); // Debugging line
+
     res.json({ success: true, message: 'New question and answer saved successfully.', questionId, answerId: newAnswerId });
   } catch (error) {
-    console.error('Failed to link question and answer:', error);
-    return res.json({ success: false, message: 'Failed to link question and answer.' });
+    console.error('Operation failed:', error);
+    res.json({ success: false, message: 'An error occurred. Please check the server logs for more details.' });
   }
 });
-
 
 
 // set port, listen for requests
