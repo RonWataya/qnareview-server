@@ -107,6 +107,26 @@ app.get('/getParagraphs', (req, res) => {
     res.json(results); // Send query results back to the client
   });
 });
+//update answer
+app.post("/api/updateAnswer", async (req, res) => {
+  const { answerId, newAnswer } = req.body;
+
+  if (!answerId || !newAnswer) {
+      return res.status(400).json({ message: "Missing answerId or newAnswer in request" });
+  }
+
+  const query = `
+  UPDATE answers SET ANSWER_TEXT = ? WHERE ANSWER_ID = ?;
+  `;
+
+  try {
+      await db.promise().query(query, [newAnswer, answerId]);
+      res.status(200).json({ message: "Answer updated successfully" });
+  } catch (error) {
+      console.error("Error updating answer:", error);
+      res.status(500).json({ message: "Error updating answer" });
+  }
+});
 
 //Save new answer to an existing question
 app.post('/save-answer', (req, res) => {
