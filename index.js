@@ -216,7 +216,25 @@ app.post('/create-question-answer', async (req, res) => {
   }
 });
 
+// Login route
+app.post('/login', (req, res) => {
+  const { token } = req.body;
+  const query = 'SELECT * FROM tokens WHERE token = ? LIMIT 1';
 
+  db.query(query, [token], (err, results) => {
+      if (err) {
+          res.json({ success: false, message: "Error querying the database." });
+          return;
+      }
+      if (results.length > 0) {
+          // Token is valid
+          res.json({ success: true, message: "Login successful." });
+      } else {
+          // Token is invalid
+          res.json({ success: false, message: "Invalid token." });
+      }
+  });
+});
 
 // set port, listen for requests
 const PORT = 2000;
