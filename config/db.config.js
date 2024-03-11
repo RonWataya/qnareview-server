@@ -1,9 +1,9 @@
 
-const HOST = 'hive.cnm0ouk4axh4.us-east-1.rds.amazonaws.com';
-const USER = 'admin';
-const PASSWORD = 'hive2022';
-const DB = 'document-manager';
-const PORTAWS = '3308';
+const HOST = '';
+const USER = '';
+const PASSWORD = '';
+const DB = '';
+const PORTAWS = '';
 
 module.exports = {
     HOST: HOST,
@@ -12,20 +12,3 @@ module.exports = {
     DB: DB,
     PORTAWS: PORTAWS
 };
-
-/*
-
-const HOST = 'hive.cnm0ouk4axh4.us-east-1.rds.amazonaws.com';
-const USER = 'admin';
-const PASSWORD = 'hive2022';
-const DB = 'moneyhive';
-const PORTAWS = '3308';
-
-module.exports = {
-    HOST: HOST,
-    USER: USER,
-    PASSWORD: PASSWORD,
-    DB: DB
-        //  PORTAWS: PORTAWS
-};
-*/
