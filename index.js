@@ -6,6 +6,9 @@ const db = require("./config/db.js"); // Import your database connection from db
 const app = express();
 
 
+
+
+
 // parse requests of content-type - application/json
 
 app.use(express.json({ limit: '50mb' }));
@@ -23,7 +26,33 @@ app.use(cors({
     origin: '*'
 }));
 
+// Your OpenAI API key and configuration
+
+
+
 // Define routes
+
+// auto generated questions
+//Dummy generator functions
+function generateRandomQuestion(context) {
+  const prefixes = ["What is", "Why", "Who", "How"];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  return `${prefix} ${context}?`;
+}
+
+// Route to generate questions
+app.post('/generate-questions', (req, res) => {
+  const { contexts } = req.body;
+  let questions = [];
+
+  // Ensure we generate 5 questions
+  for (let i = 0; i < 5; i++) {
+      const context = contexts[i % contexts.length]; // Cycle through contexts if fewer than 5
+      questions.push(generateRandomQuestion(context));
+  }
+
+  res.json({ questions });
+});
 
 //Fetch questions and answers
 app.get("/api/questions", async (req, res) => {
