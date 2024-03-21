@@ -33,26 +33,27 @@ app.use(cors({
 // Define routes
 
 // auto generated questions
-//Dummy generator functions
-function generateRandomQuestion(context) {
-  const prefixes = ["What is", "Why", "Who", "How"];
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  return `${prefix} ${context}?`;
-}
 
 // Route to generate questions
 app.post('/generate-questions', (req, res) => {
-  const { contexts } = req.body;
-  let questions = [];
+    const { contexts, numberOfQuestions, questionTypes } = req.body;
+    let questions = [];
 
-  // Ensure we generate 5 questions
-  for (let i = 0; i < 5; i++) {
-      const context = contexts[i % contexts.length]; // Cycle through contexts if fewer than 5
-      questions.push(generateRandomQuestion(context));
-  }
+    function generateRandomQuestion(context, questionTypes) {
+        // Select a random type if multiple types are selected
+        const prefix = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+        return `${prefix} ${context}?`;
+    }
 
-  res.json({ questions });
+    // Generate the requested number of questions
+    for (let i = 0; i < numberOfQuestions; i++) {
+        const context = contexts[i % contexts.length]; // Cycle through contexts if fewer than requested number
+        questions.push(generateRandomQuestion(context, questionTypes));
+    }
+
+    res.json({ questions });
 });
+
 
 //Fetch questions and answers
 app.get("/api/questions", async (req, res) => {
