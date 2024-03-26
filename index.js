@@ -261,7 +261,64 @@ app.post('/create-question-answer', async (req, res) => {
   }
 });
 
-
+//create a new question and answer from draft
+app.post('/create-question-answer-draft', async (req, res) => {
+    const { questionText, answerText, contextData } = req.body;
+    // Corrected log statement to include the whole contextData
+    console.log('Received data:', { questionText, answerText, contextData });
+  
+    try {
+        // Step 1: Insert the new question
+        const questionQuery = 'INSERT INTO questions (Q_TEXT) VALUES (?)';
+        const [questionResult] = await db.promise().query(questionQuery, [questionText]);
+        const questionId = questionResult.insertId;
+        console.log('Question inserted with ID:', questionId);
+  
+        // Step 2: Determine the next CONTEXT_ID
+        const contextQuery = "SELECT CONTEXT_ID FROM context WHERE CONTEXT_ID REGEXP '^C_A_[0-9]+_1$' ORDER BY LENGTH(CONTEXT_ID) DESC, CONTEXT_ID DESC LIMIT 1";
+        const [contextResults] = await db.promise().query(contextQuery);
+        let nextContextNumber = 1;
+        if (contextResults.length > 0) {
+            const lastId = contextResults[0].CONTEXT_ID;
+            const lastNumber = parseInt(lastId.split('_')[2]);
+            nextContextNumber = lastNumber + 1;
+        }
+        const contextId = `C_A_${nextContextNumber}_1`;
+        console.log('Generated CONTEXT_ID:', contextId);
+  
+        // Step 3: Insert the new context
+        for (const { docId, paragId } of contextData) {
+            await db.promise().query('INSERT INTO context (CONTEXT_ID, DOC_ID, PARAG_ID) VALUES (?, ?, ?)', [contextId, docId, paragId]);
+            console.log('Context inserted:', { contextId, docId, paragId });
+        }
+  
+        // Step 4: Ensure unique ANSWER_ID
+        const answerIdCheckQuery = "SELECT ANSWER_ID FROM answers WHERE ANSWER_ID REGEXP '^A_[0-9]+_1$' ORDER BY LENGTH(ANSWER_ID) DESC, ANSWER_ID DESC LIMIT 1";
+        const [answerResults] = await db.promise().query(answerIdCheckQuery);
+        let nextAnswerNumber = 1;
+        if (answerResults.length > 0) {
+            const lastAnswerId = answerResults[0].ANSWER_ID;
+            const lastAnswerNumber = parseInt(lastAnswerId.split('_')[1]);
+            nextAnswerNumber = Math.max(lastAnswerNumber + 1, nextContextNumber); // Ensure it's not lower than nextContextNumber
+        }
+        const newAnswerId = `A_${nextAnswerNumber}_1`;
+  
+        // Insert the new answer with the CONTEXT_ID
+        const insertAnswerQuery = 'INSERT INTO answers (ANSWER_ID, ANSWER_TEXT, CONTEXT_ID) VALUES (?, ?, ?)';
+        await db.promise().query(insertAnswerQuery, [newAnswerId, answerText, contextId]);
+        console.log('Answer inserted with ID:', newAnswerId);
+  
+        // Step 5: Link the question and answer in the qa table
+        const insertQAQuery = 'INSERT INTO qa (Q_ID, ANSWER_ID) VALUES (?, ?)';
+        await db.promise().query(insertQAQuery, [questionId, newAnswerId]);
+        console.log('Linked question and answer:', { questionId, newAnswerId });
+  
+        res.json({ success: true, message: 'New question and answer saved successfully.', questionId, answerId: newAnswerId });
+    } catch (error) {
+        console.error('Operation failed:', error);
+        res.json({ success: false, message: 'An error occurred. Please check the server logs for more details.' });
+    }
+  });
 // Login route
 app.post('/login', (req, res) => {
   const { token } = req.body;
