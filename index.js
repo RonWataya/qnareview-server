@@ -35,7 +35,7 @@ app.use(cors({
 // auto generated questions
 
 // Route to generate questions
-app.post('/generate-questions', (req, res) => {
+app.post('/api/generate-questions', (req, res) => {
     const { contexts, numberOfQuestions, questionTypes } = req.body;
     let questions = [];
 
@@ -110,7 +110,7 @@ app.get("/api/context/:contextId", async (req, res) => {
 
 //Get documents
 // Route to get all documents
-app.get('/getDocuments', (req, res) => {
+app.get('/api/getDocuments', (req, res) => {
   const query = 'SELECT DOC_ID, TITLE FROM documents';
 
   db.query(query, (error, results) => {
@@ -124,7 +124,7 @@ app.get('/getDocuments', (req, res) => {
 });
 
 // Route to handle AJAX request for paragraphs
-app.get('/getParagraphs', (req, res) => {
+app.get('/api/getParagraphs', (req, res) => {
   const docId = req.query.docId;
   const query = 'SELECT * FROM doc_parag WHERE DOC_ID = ?';
 
@@ -203,7 +203,7 @@ app.post('/save-answer', async (req, res) => {
 
 
 //create a new question and answer
-app.post('/create-question-answer', async (req, res) => {
+app.post('api/create-question-answer', async (req, res) => {
   const { questionText, answerText, contextData } = req.body;
   // Corrected log statement to include the whole contextData
   console.log('Received data:', { questionText, answerText, contextData });
@@ -262,7 +262,7 @@ app.post('/create-question-answer', async (req, res) => {
 });
 
 //create a new question and answer from draft
-app.post('/create-question-answer-draft', async (req, res) => {
+app.post('api/create-question-answer-draft', async (req, res) => {
     const { questionText, answerText, contextData } = req.body;
     // Corrected log statement to include the whole contextData
     console.log('Received data:', { questionText, answerText, contextData });
@@ -320,7 +320,7 @@ app.post('/create-question-answer-draft', async (req, res) => {
     }
   });
 // Login route
-app.post('/login', (req, res) => {
+app.post('/api/login', (req, res) => {
   const { token } = req.body;
   const query = 'SELECT * FROM tokens WHERE token = ? LIMIT 1';
 
